@@ -20,6 +20,73 @@ ie: This now works when calling from Javascript back to the native app.  The app
 android.updateRecords({ name: "Herbert", age: 22 }, function (status) { updateWebUI(status); });
 ```
 
+## Usage
+
+- Instead of using a WebView, replace it with an instance of JSWebView.
+- To export your objects and methods, continue calling ```addJavascriptInterface()``` as you normally would.
+- For all exported objects and methods, all parameters should be Strings (see below).
+
+Example:
+
+Imagine this is called from Javascript ...
+
+```javascript
+android.doSomething(function (n) { return n * n; });
+```
+
+In your Activity ...
+
+```java
+  webView.getSettings().setJavaScriptEnabled(true);
+  webView.addJavascriptInterface(new Bridge(this, webView), "android");
+```
+
+In the interface you wish to export ...
+
+```java
+public class Bridge {
+    final Context mContext;
+    JSWebView mWebView; // we need the webview in order to call functions.
+
+    Bridge(Context context, JSWebView webView) {
+        mContext = context;
+        mWebView = webView;
+    }
+
+    @JavascriptInterface
+    public void doSomething2(String param) {
+        JSValue valueParam = new JSValue(param);
+
+        if (valueParam.isFunction()) {
+            Object args[] = {5};
+
+            valueParam.callFunction(mWebView, args, new ValueCallback<JSValue>() {
+                @Override
+                public void onReceiveValue(final JSValue value) {
+                    if (value.isValid()) {
+                        // do something with your value of 25
+                    }
+                }
+            });
+        }
+    }
+    
+}
+
+```
+
+## How does it work?
+
+Essentially it creates a proxy object in Javascript for everything you export, which turns all parameters/returns into JSON.  We then pass the JSON to and fro as Strings, decode them, etc.  Please have a look at the source and let me know if you have further questions.
+
+## TODO
+
+- Support more return types from JSValue's callFunction method (currently only Strings, Integers, and Doubles.  This is simply a matter of formatting.
+- Support more input types for JSValue's callFunction method (currently only Strings, Integers, and Doubles.  This is simply a matter of formatting. 
+
+Yeah.  That's a short but very doable TODO list. :D
+
+
 ###### THG's Primary Contributors
 
 Dr. Sneed (@bsneed)<br>

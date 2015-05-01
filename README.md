@@ -55,16 +55,22 @@ public class Bridge {
 
     @JavascriptInterface
     public void doSomething2(String param) {
+        // turn the parameter we got into something useful.
         JSValue valueParam = new JSValue(param);
 
+        // is it a function?  if so, lets call it.
         if (valueParam.isFunction()) {
             Object args[] = {5};
 
+            // call said function against mWebView, with the given args.
+            // the ValueCallback will be executed once the called function returns.
             valueParam.callFunction(mWebView, args, new ValueCallback<JSValue>() {
                 @Override
                 public void onReceiveValue(final JSValue value) {
+                    // did we actually get back a value?  (ie: not null or undefined)
                     if (value.isValid()) {
                         // do something with your value of 25
+                        Log.d("value", value.stringValue());
                     }
                 }
             });

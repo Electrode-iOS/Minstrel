@@ -1,4 +1,4 @@
-package com.example.brandon.bridgetest;
+package io.theholygrail.jsbridgetest;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

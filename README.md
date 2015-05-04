@@ -85,13 +85,7 @@ public class Bridge {
 
 Essentially it creates a proxy object in Javascript for everything you export, which turns all parameters/returns into JSON.  We then pass the JSON to and fro as Strings, decode them, etc.  Please have a look at the source and let me know if you have further questions.
 
-## TODO
-
-- Support more input types for JSValue's callFunction method (currently only Strings, Integers, and Doubles.  This is simply a matter of formatting. 
-
-Yeah.  That's a short but very doable TODO list. :D
-
-
+___
 ###### THG's Primary Contributors
 
 Dr. Sneed (@bsneed)<br>

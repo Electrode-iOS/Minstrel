@@ -85,7 +85,12 @@ public class Bridge {
 
 Essentially it creates a proxy object in Javascript for everything you export, which turns all parameters/returns into JSON.  We then pass the JSON to and fro as Strings, decode them, etc.  Please have a look at the source and let me know if you have further questions.
 
-___
+## Contributions
+
+We appreciate your contributions to all of our projects and look forward to interacting with you via Pull Requests, the issue tracker, via Twitter, etc.  We're happy to help you, and to have you help us.  We'll strive to answer every PR and issue and be very transparent in what we do.
+
+When contributing code, please refer to our Dennis (https://github.com/TheHolyGrail/Dennis).
+
 ###### THG's Primary Contributors
 
 Dr. Sneed (@bsneed)<br>

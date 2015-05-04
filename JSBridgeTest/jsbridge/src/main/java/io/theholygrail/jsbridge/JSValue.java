@@ -271,10 +271,7 @@ public class JSValue {
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                /*
-                This is strictly to retrieve the result value.  The WebView.evaluateJavascript() method would be
-                a much better choice, but it's not available until a later SDK than we support.
-                */
+                // This is strictly to retrieve the result value.
 
                 String jsFunction = javascriptStringValue();
 

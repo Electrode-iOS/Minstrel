@@ -43,15 +43,15 @@ public class JSWebView extends WebView {
     }
 
     public void executeJavascript(String javascript) {
+        /*
+        The WebView.evaluateJavascript() method would be a much better choice, but it's not
+        available until a later SDK than we support.
+         */
         loadUrl("javascript:" + Uri.encode(javascript));
     }
 
     // Private stuff -------------------------------------------------------------------------------
 
-    /*
-    This is strictly to retrieve the result value.  The WebView.evaluateJavascript() method would be
-    a much better choice, but it's not available until a later SDK than we support.
-     */
     public class BridgeSupport {
         private Context mContext = null;
         private ValueCallback<String> mResultCallback = null;

@@ -87,7 +87,6 @@ Essentially it creates a proxy object in Javascript for everything you export, w
 
 ## TODO
 
-- Support more return types from JSValue's callFunction method (currently only Strings, Integers, and Doubles.  This is simply a matter of formatting.
 - Support more input types for JSValue's callFunction method (currently only Strings, Integers, and Doubles.  This is simply a matter of formatting. 
 
 Yeah.  That's a short but very doable TODO list. :D

@@ -42,6 +42,10 @@ public class JSWebView extends WebView {
         exportObjectMethodsToJS(obj, interfaceName);
     }
 
+    public void executeJavascript(String javascript) {
+        loadUrl("javascript:" + Uri.encode(javascript));
+    }
+
     // Private stuff -------------------------------------------------------------------------------
 
     /*
@@ -82,7 +86,7 @@ public class JSWebView extends WebView {
                 String callString = generateCallString(method);
 
                 String jsString = interfaceName+"."+methodName+" = function("+parameterString+") { __"+interfaceName+"."+methodName+"("+callString+"); }";
-                super.loadUrl("javascript:"+jsString);
+                executeJavascript(jsString);
             }
         }
     }
@@ -127,7 +131,7 @@ public class JSWebView extends WebView {
     }
 
     private void loadJavascriptSupportBits(String interfaceName) {
-        super.loadUrl("javascript: " + interfaceName + " = { };");
+        executeJavascript(interfaceName + " = { };");
     }
 
     private void loadJavascriptBaseSupport() {
@@ -137,8 +141,7 @@ public class JSWebView extends WebView {
             addJavascriptInterface(bridgeSupport, "__bridgeSupport");
 
             // would be nice to load this from a file contained in the .jar instead?
-            super.loadUrl("javascript: " +
-                            Uri.encode("function valueToBridgeString(obj, embedded, cache) {\n" +
+            executeJavascript("function valueToBridgeString(obj, embedded, cache) {\n" +
                                     "    // recursion sanity check\n" +
                                     "    if (!cache) cache = [];\n" +
                                     "    if (cache.indexOf(obj) >= 0) {\n" +
@@ -185,8 +188,7 @@ public class JSWebView extends WebView {
                                     "        rtn = '{\"__rawValue\": ' + rtn + '}';\n" +
                                     "    }\n" +
                                     "    return rtn;\n" +
-                                    "}\n")
-            );
+                                    "}\n");
         }
     }
 }

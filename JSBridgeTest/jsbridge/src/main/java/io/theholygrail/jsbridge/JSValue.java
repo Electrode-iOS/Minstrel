@@ -233,6 +233,10 @@ public class JSValue {
     public void callFunction(final JSWebView webView, Object args[], final ValueCallback<JSValue> resultCallback) {
         JSValue result = null;
 
+        if (!isFunction()) {
+            return;
+        }
+
         String argsString = "";
         for (int i = 0; i < args.length; i++) {
             Object arg = args[i];
@@ -272,12 +276,16 @@ public class JSValue {
                 a much better choice, but it's not available until a later SDK than we support.
                 */
 
+                String jsFunction = javascriptStringValue();
+
                 // setup our call
-                webView.loadUrl("javascript:var __lastCallback = " + Uri.encode(javascriptStringValue()));
+                webView.executeJavascript("var __lastCallback = " + jsFunction);
+                // make sure __lastResult is cleared so we don't get a previous value.
+                webView.executeJavascript("var __lastResult = null;");
                 // make said call...
-                webView.loadUrl("javascript:var __lastResult = __lastCallback(" + arguments + ");");
+                webView.executeJavascript("var __lastResult = __lastCallback(" + arguments + ");");
                 // get result...
-                webView.loadUrl("javascript:__bridgeSupport.passResult(__lastResult);");
+                webView.executeJavascript("__bridgeSupport.passResult(__lastResult);");
             }
         });
     }

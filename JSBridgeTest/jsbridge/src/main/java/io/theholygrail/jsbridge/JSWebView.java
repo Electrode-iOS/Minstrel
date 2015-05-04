@@ -76,9 +76,7 @@ public class JSWebView extends WebView {
     private void exportObjectMethodsToJS(Object obj, String interfaceName) {
         Method methods[] = obj.getClass().getMethods();
 
-        for (int i = 0; i < methods.length; i++) {
-            Method method = methods[i];
-
+        for (Method method : methods) {
             if (hasOnlyStringParameters(method)) {
                 // export it.
                 String methodName = method.getName();

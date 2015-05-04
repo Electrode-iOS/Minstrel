@@ -1,6 +1,5 @@
 package io.theholygrail.jsbridge;
 
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
@@ -16,6 +15,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by brandon on 4/28/15.
@@ -210,22 +210,51 @@ public class JSValue {
                 e.printStackTrace();
             }
         }
-        // TODO: Support other types later
-        /*
         else if (isObject()) {
             result = "{";
 
             Map map = mapValue();
             Set keys = map.keySet();
 
-            for (String s: keys) {
-                result += s + ": " + ....
+            for (Object s: keys) {
+                Object obj = map.get(s);
+                String value = "";
+                if (obj instanceof JSValue) {
+                    value = ((JSValue) obj).javascriptStringValue();
+                } else {
+                    value = obj.toString();
+                }
+                result += s + ": " + value;
             }
 
-            ...
+            result += " }";
         } else if (isArray()) {
+            result = "[";
 
-        }*/
+            List list = listValue();
+            int index = 0;
+
+            for (Object obj : list) {
+                String value;
+                if (obj instanceof JSValue) {
+                    value = ((JSValue) obj).javascriptStringValue();
+                } else {
+                    value = obj.toString();
+                }
+                if (index == 0) {
+                    result += value;
+                } else {
+                    result += ", " + value;
+                }
+                index++;
+            }
+
+            result += " ]";
+        } else if (isString()) {
+            result = "'" + stringValue() + "'";
+        } else {
+            result = stringValue();
+        }
 
         return result;
     }

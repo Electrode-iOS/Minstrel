@@ -237,7 +237,7 @@ public class JSValue {
             for (Object obj : list) {
                 String value;
                 if (obj instanceof JSValue) {
-                    value = ((JSValue) obj).javascriptStringValue();
+                    value = ((JSValue)obj).javascriptStringValue();
                 } else {
                     value = obj.toString();
                 }
@@ -249,9 +249,9 @@ public class JSValue {
                 index++;
             }
 
-            result += " ]";
+            result += "]";
         } else if (isString()) {
-            result = "'" + stringValue() + "'";
+            result = "'" + stringValue().replace("'", "\'") + "'";
         } else {
             result = stringValue();
         }
@@ -266,25 +266,16 @@ public class JSValue {
             return;
         }
 
-        String argsString = "";
-        for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
-            if (i > 0) {
-                argsString += ", ";
-            }
-
-            if (arg instanceof String) {
-                argsString += "'" + ((String)arg).replace("'", "\'") + "'";
-            } else if (arg instanceof Integer) {
-                argsString += ((Integer)arg).toString();
-            } else if (arg instanceof Double) {
-                argsString += ((Double)arg).toString();
-            } else if (arg instanceof Boolean) {
-                argsString += ((Boolean)arg).toString();
-            } else {
-                // TODO: Support other argument types later, like objects, arrays, etc.
-            }
+        JSONArray jsonArgs = null;
+        try {
+            jsonArgs = new JSONArray(args);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
+
+        // convert our args into a JSValue that we can string-ify.
+        JSValue jsArgs = decompose(jsonArgs);
+        String argsString = jsArgs.javascriptStringValue();
 
         // setup our result expectation if we need to.
         if (resultCallback != null) {
@@ -375,4 +366,5 @@ public class JSValue {
 
         return result;
     }
+
 }

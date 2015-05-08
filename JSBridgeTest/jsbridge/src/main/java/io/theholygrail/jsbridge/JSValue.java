@@ -195,7 +195,7 @@ public class JSValue {
         return result;
     }
 
-    public String javascriptStringValue() {
+    public String functionStringValue() {
         String result = null;
 
         if (isFunction()) {
@@ -209,6 +209,16 @@ public class JSValue {
             } catch (UnsupportedEncodingException e) {
                 e.printStackTrace();
             }
+        }
+
+        return result;
+    }
+
+    public String javascriptStringValue() {
+        String result = null;
+
+        if (isFunction()) {
+            result = "__functionCache['\\\"" + (String)mValue + "\\\"']";
         }
         else if (isObject()) {
             result = "{";
@@ -293,16 +303,13 @@ public class JSValue {
             public void run() {
                 // This is strictly to retrieve the result value.
 
-                String jsFunction = (String)mValue;
+                String jsFunction = javascriptStringValue();
 
-                // setup our call
-                //webView.executeJavascript("var __lastCallback = __functionCache['" + jsFunction + "'];");
-                // make sure __lastResult is cleared so we don't get a previous value.
-                //webView.executeJavascript("var __lastResult = null;");
-                // make said call...
-                //webView.executeJavascript("var __lastResult = __lastCallback(" + arguments + ");");
-                // get result...
-                webView.executeJavascript("var __lastCallback = __functionCache['\\\"" + jsFunction + "\\\"'];\n" +
+                // 1. setup our call
+                // 2. make sure __lastResult is cleared so we don't get a previous value.
+                // 3. make said call...
+                // 4. get result and pass it back to native.
+                webView.executeJavascript("var __lastCallback = " + jsFunction + "\n" +
                         "var __lastResult = null;\n" +
                         "var __lastResult = __lastCallback(" + arguments + ");\n" +
                         "__bridgeSupport.passResult(__lastResult);");

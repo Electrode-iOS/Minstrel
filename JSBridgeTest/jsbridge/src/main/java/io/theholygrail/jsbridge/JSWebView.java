@@ -180,7 +180,7 @@ public class JSWebView extends WebView {
                                     "            }\n" +
                                     "            break;\n" +
                                     "        case 'function':\n" +
-                                    "            rtn = '\\\"function::' + btoa(obj.toString()) + '\\\"';\n" +
+                                    "            rtn = '\\\"function:' + btoa(obj.toString()) + '\\\"';\n" +
                                     "            __functionCache[rtn] = obj;\n" +
                                     "            break;\n" +
                                     "        default:\n" +

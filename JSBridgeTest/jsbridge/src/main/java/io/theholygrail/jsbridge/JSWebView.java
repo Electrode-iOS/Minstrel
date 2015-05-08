@@ -17,6 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public class JSWebView extends WebView {
     private Context mContext = null;
+    private int mFunctionCacheLimit = 200;
 
     public BridgeSupport bridgeSupport = null;
 
@@ -50,6 +51,11 @@ public class JSWebView extends WebView {
         available until a later SDK than we support.
          */
         loadUrl("javascript:" + Uri.encode(javascript));
+    }
+
+    public void setFunctionCacheLimit(int count) {
+        mFunctionCacheLimit = count;
+        executeJavascript("__functionIDLimit = " + mFunctionCacheLimit + ";");
     }
 
     // Private stuff -------------------------------------------------------------------------------
@@ -143,7 +149,11 @@ public class JSWebView extends WebView {
             addJavascriptInterface(bridgeSupport, "__bridgeSupport");
 
             // add our function passing stuff.
-            executeJavascript("__functionCache = { };");
+            executeJavascript("__functionIDCounter = 0, __functionCache = { };");
+
+            // set the limit of our function cache to the default.
+            // this is used in the javascript injection below.
+            setFunctionCacheLimit(mFunctionCacheLimit);
 
             // would be nice to load this from a file contained in the .jar instead?
             executeJavascript("function valueToBridgeString(obj, embedded, cache) {\n" +
@@ -180,8 +190,10 @@ public class JSWebView extends WebView {
                                     "            }\n" +
                                     "            break;\n" +
                                     "        case 'function':\n" +
-                                    "            rtn = '\\\"function:' + btoa(obj.toString()) + '\\\"';\n" +
-                                    "            __functionCache[rtn] = obj;\n" +
+                                    "            rtn = '\\\"function:' + __functionIDCounter.toString() + ':' + btoa(obj.toString()) + '\\\"';\n" +
+                                    "            __functionCache[__functionIDCounter] = obj;\n" +
+                                    "            __functionIDCounter++;\n" +
+                                    "            if (__functionIDCounter > __functionIDLimit) { __functionIDCounter = 0; }\n" +
                                     "            break;\n" +
                                     "        default:\n" +
                                     "            if (obj === undefined) {\n" +

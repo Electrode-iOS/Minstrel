@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
 import android.webkit.ValueCallback;
+import android.webkit.WebView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -11,6 +12,7 @@ import org.json.JSONObject;
 
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -138,7 +140,7 @@ public class JSValue {
             }
         }
 
-        return (Integer)result;
+        return result;
     }
 
     public Double doubleValue() {
@@ -195,19 +197,38 @@ public class JSValue {
         return result;
     }
 
-    public String functionStringValue() {
+    public String functionSourceValue() {
         String result = null;
 
         if (isFunction()) {
-            // rip the "function:" part off
-            String base64String = ((String)mValue).replace("function:", "");
-            // decode it back to it's javascript origins.
-            byte[] data = Base64.decode(base64String, Base64.DEFAULT);
+            String[] parts = splitFunctionValues();
 
-            try {
-                result = new String(data, "UTF-8");
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+            if (parts.length == 3) {
+                // source code is base64 encoded in parts[2].
+                String base64String = parts[2];
+                // decode it back to it's javascript origins.
+                byte[] data = Base64.decode(base64String, Base64.DEFAULT);
+
+                try {
+                    result = new String(data, "UTF-8");
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return result;
+    }
+
+    public String functionIDValue() {
+        String result = null;
+
+        if (isFunction()) {
+            String[] parts = splitFunctionValues();
+
+            if (parts.length == 3) {
+                // function ID is in parts[1].
+                result = parts[1];
             }
         }
 
@@ -215,10 +236,10 @@ public class JSValue {
     }
 
     public String javascriptStringValue() {
-        String result = null;
+        String result;
 
         if (isFunction()) {
-            result = "__functionCache['\\\"" + (String)mValue + "\\\"']";
+            result = "__functionCache[" + functionIDValue() + "]";
         }
         else if (isObject()) {
             result = "{";
@@ -228,7 +249,7 @@ public class JSValue {
 
             for (Object s: keys) {
                 Object obj = map.get(s);
-                String value = "";
+                String value;
                 if (obj instanceof JSValue) {
                     value = ((JSValue) obj).javascriptStringValue();
                 } else {
@@ -270,15 +291,17 @@ public class JSValue {
     }
 
     public void callFunction(final JSWebView webView, Object args[], final ValueCallback<JSValue> resultCallback) {
-        JSValue result = null;
-
         if (!isFunction()) {
             return;
         }
 
         JSONArray jsonArgs = null;
         try {
-            jsonArgs = new JSONArray(args);
+            // not available till API 19, our minimum is 14.  :(
+            // jsonArgs = new JSONArray(args);
+            ArrayList argList = new ArrayList<>(Arrays.asList(args));
+            jsonArgs = new JSONArray(argList);
+            // sigh.
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -325,12 +348,12 @@ public class JSValue {
     }
 
     protected static JSValue decompose(Object object) {
-        JSValue result = null;
+        JSValue result;
 
         if (object instanceof JSONArray) {
             // turn it into a normal array of JSValue's.
             JSONArray jsonArray = (JSONArray)object;
-            List<Object> array = new ArrayList<Object>();
+            List<Object> array = new ArrayList<>();
 
             // old skool iteration, we want to preserve the order.
             for (int i = 0; i < jsonArray.length(); i++) {
@@ -347,7 +370,7 @@ public class JSValue {
 
         } else if (object instanceof JSONObject) {
             JSONObject jsonObject = (JSONObject)object;
-            Map<String, Object> map = new HashMap<String, Object>();
+            Map<String, Object> map = new HashMap<>();
 
             Iterator<String> keys = jsonObject.keys();
             while (keys.hasNext()) {
@@ -372,6 +395,18 @@ public class JSValue {
             else
                 jsValue.mValue = object;
             result = jsValue;
+        }
+
+        return result;
+    }
+
+    private String[] splitFunctionValues() {
+        String result[] = null;
+
+        if (isFunction()) {
+            // "function:<id>:<base64 data>"
+            String value = (String) mValue;
+            result = value.split(":");
         }
 
         return result;

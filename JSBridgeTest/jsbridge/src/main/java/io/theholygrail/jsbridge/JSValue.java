@@ -298,8 +298,7 @@ public class JSValue {
         try {
             // not available till API 19, our minimum is 14.  :(
             // jsonArgs = new JSONArray(args);
-            ArrayList argList = new ArrayList<>(Arrays.asList(args));
-            jsonArgs = new JSONArray(argList);
+            jsonArgs = new JSONArray(Arrays.asList(args));
             // sigh.
         } catch (Exception e) {
             e.printStackTrace();

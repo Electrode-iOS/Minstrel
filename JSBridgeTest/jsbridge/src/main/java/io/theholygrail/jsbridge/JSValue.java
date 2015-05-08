@@ -293,16 +293,19 @@ public class JSValue {
             public void run() {
                 // This is strictly to retrieve the result value.
 
-                String jsFunction = javascriptStringValue();
+                String jsFunction = (String)mValue;
 
                 // setup our call
-                webView.executeJavascript("var __lastCallback = " + jsFunction);
+                //webView.executeJavascript("var __lastCallback = __functionCache['" + jsFunction + "'];");
                 // make sure __lastResult is cleared so we don't get a previous value.
-                webView.executeJavascript("var __lastResult = null;");
+                //webView.executeJavascript("var __lastResult = null;");
                 // make said call...
-                webView.executeJavascript("var __lastResult = __lastCallback(" + arguments + ");");
+                //webView.executeJavascript("var __lastResult = __lastCallback(" + arguments + ");");
                 // get result...
-                webView.executeJavascript("__bridgeSupport.passResult(__lastResult);");
+                webView.executeJavascript("var __lastCallback = __functionCache['\\\"" + jsFunction + "\\\"'];\n" +
+                        "var __lastResult = null;\n" +
+                        "var __lastResult = __lastCallback(" + arguments + ");\n" +
+                        "__bridgeSupport.passResult(__lastResult);");
             }
         });
     }

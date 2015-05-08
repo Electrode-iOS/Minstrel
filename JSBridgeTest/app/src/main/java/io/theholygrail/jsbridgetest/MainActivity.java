@@ -2,12 +2,15 @@ package io.theholygrail.jsbridgetest;
 
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.webkit.ConsoleMessage;
 import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 import io.theholygrail.jsbridge.JSWebView;
 
@@ -25,10 +28,20 @@ public class MainActivity extends ActionBarActivity {
         webView.getSettings().setJavaScriptEnabled(true);
         webView.getSettings().setLoadsImagesAutomatically(true);
         webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
+        webView.setWebViewClient(new WebViewClient() {
+            public void onReceivedError(WebView view, int errorCod,String description, String failingUrl) {
+                Log.d("webviewerror", description);
+            }
+        });
         webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
                 return super.onJsAlert(view, url, message, result);
+            }
+
+            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+                Log.d("webviewerror", "error: " + consoleMessage.message() + " line: " + consoleMessage.lineNumber());
+                return false;
             }
         });
 

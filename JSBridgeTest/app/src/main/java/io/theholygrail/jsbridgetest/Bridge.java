@@ -29,6 +29,8 @@ public class Bridge {
         if (valueParam.isFunction()) {
             Object args[] = {5};
 
+            String value = valueParam.javascriptStringValue();
+
             valueParam.callFunction(mWebView, args, new ValueCallback<JSValue>() {
                 @Override
                 public void onReceiveValue(final JSValue value) {

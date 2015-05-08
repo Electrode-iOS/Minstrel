@@ -3,6 +3,7 @@ package io.theholygrail.jsbridge;
 import android.content.Context;
 import android.net.Uri;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebView;
@@ -43,6 +44,7 @@ public class JSWebView extends WebView {
     }
 
     public void executeJavascript(String javascript) {
+        Log.d("javascript", javascript);
         /*
         The WebView.evaluateJavascript() method would be a much better choice, but it's not
         available until a later SDK than we support.
@@ -83,7 +85,8 @@ public class JSWebView extends WebView {
                 String parameterString = generateParameterString(method);
                 String callString = generateCallString(method);
 
-                String jsString = interfaceName+"."+methodName+" = function("+parameterString+") { __"+interfaceName+"."+methodName+"("+callString+"); }";
+                String jsString = interfaceName + "." + methodName + " = function(" + parameterString + ") { "
+                        + "__"+ interfaceName + "." + methodName + "("+callString+"); }";
                 executeJavascript(jsString);
             }
         }
@@ -136,7 +139,11 @@ public class JSWebView extends WebView {
         if (bridgeSupport == null) {
             bridgeSupport = new BridgeSupport(mContext);
 
+            // add our return handling stuff.
             addJavascriptInterface(bridgeSupport, "__bridgeSupport");
+
+            // add our function passing stuff.
+            executeJavascript("__functionCache = { };");
 
             // would be nice to load this from a file contained in the .jar instead?
             executeJavascript("function valueToBridgeString(obj, embedded, cache) {\n" +
@@ -174,6 +181,7 @@ public class JSWebView extends WebView {
                                     "            break;\n" +
                                     "        case 'function':\n" +
                                     "            rtn = '\\\"function::' + btoa(obj.toString()) + '\\\"';\n" +
+                                    "            __functionCache[rtn] = obj;\n" +
                                     "            break;\n" +
                                     "        default:\n" +
                                     "            if (obj === undefined) {\n" +

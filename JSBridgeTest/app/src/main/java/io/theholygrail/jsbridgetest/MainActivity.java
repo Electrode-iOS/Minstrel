@@ -1,17 +1,9 @@
 package io.theholygrail.jsbridgetest;
 
-import android.support.annotation.NonNull;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.webkit.ConsoleMessage;
-import android.webkit.JsResult;
-import android.webkit.WebChromeClient;
-import android.webkit.WebSettings;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
 
 import io.theholygrail.jsbridge.JSWebView;
 
@@ -26,30 +18,9 @@ public class MainActivity extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
         webView = (JSWebView)findViewById(R.id.webView);
-        webView.getSettings().setJavaScriptEnabled(true);
-        webView.getSettings().setLoadsImagesAutomatically(true);
-        webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
-        webView.setWebViewClient(new WebViewClient() {
-            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                Log.d("JSWebViewError", "Code: " + errorCode + "Error: " + description + " Url: " + failingUrl);
-            }
-        });
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
-                return super.onJsAlert(view, url, message, result);
-            }
-
-            public boolean onConsoleMessage(@NonNull ConsoleMessage consoleMessage) {
-                Log.d("JSWebViewError", "Error: " + consoleMessage.message() + " line: " + consoleMessage.lineNumber());
-                return false;
-            }
-        });
 
         webView.addJavascriptInterface(new Bridge(this, webView), "android");
         webView.loadUrl("http://theholygrail.io/androidjs2.html");
-
-
     }
 
 

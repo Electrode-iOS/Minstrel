@@ -2,10 +2,17 @@ package io.theholygrail.jsbridge;
 
 import android.content.Context;
 import android.net.Uri;
+import android.support.annotation.NonNull;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsResult;
 import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.locks.Lock;
@@ -22,16 +29,20 @@ public class JSWebView extends WebView {
 
     public JSWebView(Context context) {
         super(context);
+        mContext = context;
+        setupDefaults();
     }
 
     public JSWebView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        mContext = context;
+        setupDefaults();
     }
 
     public JSWebView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
-        // the two constructors above end up calling this guy, so just set it up once.
         mContext = context;
+        setupDefaults();
     }
 
     @Override
@@ -136,6 +147,28 @@ public class JSWebView extends WebView {
         }
 
         return result;
+    }
+
+    private void setupDefaults() {
+        getSettings().setJavaScriptEnabled(true);
+        getSettings().setLoadsImagesAutomatically(true);
+        getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
+        setWebViewClient(new WebViewClient() {
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                Log.d("JSWebViewError", "Code: " + errorCode + "Error: " + description + " Url: " + failingUrl);
+            }
+        });
+        setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+                return super.onJsAlert(view, url, message, result);
+            }
+
+            public boolean onConsoleMessage(@NonNull ConsoleMessage consoleMessage) {
+                Log.d("JSWebViewError", "Error: " + consoleMessage.message() + " line: " + consoleMessage.lineNumber());
+                return false;
+            }
+        });
     }
 
     private void loadJavascriptSupportBits(String interfaceName) {

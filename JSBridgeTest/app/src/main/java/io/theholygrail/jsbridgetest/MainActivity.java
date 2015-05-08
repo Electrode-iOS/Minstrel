@@ -1,5 +1,6 @@
 package io.theholygrail.jsbridgetest;
 
+import android.support.annotation.NonNull;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -29,8 +30,8 @@ public class MainActivity extends ActionBarActivity {
         webView.getSettings().setLoadsImagesAutomatically(true);
         webView.getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
         webView.setWebViewClient(new WebViewClient() {
-            public void onReceivedError(WebView view, int errorCod,String description, String failingUrl) {
-                Log.d("webviewerror", description);
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                Log.d("JSWebViewError", "Code: " + errorCode + "Error: " + description + " Url: " + failingUrl);
             }
         });
         webView.setWebChromeClient(new WebChromeClient() {
@@ -39,17 +40,11 @@ public class MainActivity extends ActionBarActivity {
                 return super.onJsAlert(view, url, message, result);
             }
 
-            public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
-                Log.d("webviewerror", "error: " + consoleMessage.message() + " line: " + consoleMessage.lineNumber());
+            public boolean onConsoleMessage(@NonNull ConsoleMessage consoleMessage) {
+                Log.d("JSWebViewError", "Error: " + consoleMessage.message() + " line: " + consoleMessage.lineNumber());
                 return false;
             }
         });
-
-        webView.evaluateJavascript("var _lastCallback = nil", null);
-        //webView.evaluateJavascript("android = {  };", null);
-        //webView.evaluateJavascript("android.doSomething2 = function(arg0) { alert(String(arg0)); }", null);
-        //webView.evaluateJavascript("android.doSomething = function(arg0) { alert(String(arg0)); }", null);
-        //webView.evaluateJavascript("function doSomethingWithFunction(callback) { _lastCallback = callback; alert(\"Hello! I am an alert box!!\"); }", null);
 
         webView.addJavascriptInterface(new Bridge(this, webView), "android");
         webView.loadUrl("http://theholygrail.io/androidjs2.html");

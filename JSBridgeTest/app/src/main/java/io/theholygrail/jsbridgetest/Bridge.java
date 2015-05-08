@@ -3,6 +3,7 @@ package io.theholygrail.jsbridgetest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 
@@ -30,6 +31,9 @@ public class Bridge {
             Object args[] = {5};
 
             String value = valueParam.javascriptStringValue();
+            //Log.d("javascriptvalue", value);
+
+            //Log.d("javascriptparamsource", valueParam.functionSourceValue());
 
             valueParam.callFunction(mWebView, args, new ValueCallback<JSValue>() {
                 @Override

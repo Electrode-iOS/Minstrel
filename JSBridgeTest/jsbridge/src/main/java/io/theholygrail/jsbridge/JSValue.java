@@ -4,7 +4,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
 import android.webkit.ValueCallback;
-import android.webkit.WebView;
 
 import org.json.JSONArray;
 import org.json.JSONException;

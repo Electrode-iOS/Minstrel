@@ -3,7 +3,6 @@ package io.theholygrail.jsbridge;
 import android.content.Context;
 import android.net.Uri;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebView;
@@ -45,7 +44,9 @@ public class JSWebView extends WebView {
     }
 
     public void executeJavascript(String javascript) {
-        Log.d("javascript", javascript);
+        // Useful for seeing the injected javascript.
+        //Log.d("javascript", javascript);
+
         /*
         The WebView.evaluateJavascript() method would be a much better choice, but it's not
         available until a later SDK than we support.

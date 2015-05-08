@@ -25,6 +25,7 @@ android.updateRecords({ name: "Herbert", age: 22 }, function (status) { updateWe
 - Instead of using a WebView, replace it with an instance of JSWebView.
 - To export your objects and methods, continue calling ```addJavascriptInterface()``` as you normally would.
 - For all exported objects and methods, all parameters should be Strings (see below).
+- You'll then need to wrap those parameters with JSValue: ie: ```JSValue jsParam = JSValue(param);```
 
 Example:
 
@@ -37,7 +38,6 @@ android.doSomething(function (n) { return n * n; });
 In your Activity ...
 
 ```java
-  webView.getSettings().setJavaScriptEnabled(true);
   webView.addJavascriptInterface(new Bridge(this, webView), "android");
 ```
 

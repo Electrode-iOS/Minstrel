@@ -14,7 +14,12 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -22,6 +27,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * Created by brandon on 4/28/15.
  */
 public class JSWebView extends WebView {
+    private static final String TAG = JSWebView.class.getSimpleName();
     private Context mContext = null;
     private int mFunctionCacheLimit = 200;
 
@@ -45,13 +51,21 @@ public class JSWebView extends WebView {
         setupDefaults();
     }
 
-    @Override
-    public void addJavascriptInterface(Object obj, String interfaceName) {
-        super.addJavascriptInterface(obj, "__"+interfaceName);
+    public void setupInterfaces(JSInterface mainInterface) {
+        String interfaceName = mainInterface.getInterfaceName();
+        Object jsObject = mainInterface.getJsObject();
 
+        addJavascriptInterface(jsObject, "__" + interfaceName);
         loadJavascriptBaseSupport();
         loadJavascriptSupportBits(interfaceName);
-        exportObjectMethodsToJS(obj, interfaceName);
+        exportObjectMethodsToJS(jsObject, interfaceName);
+
+        // TODO: handle deeper namespaces
+        List<JSInterface> subInterfaces = mainInterface.getSubInterfaces();
+        for (JSInterface subInterface: subInterfaces) {
+            addJavascriptInterface(subInterface.getJsObject(), subInterface.getInterfaceName());
+            loadJavascriptSupportBits(interfaceName, subInterface.getInterfaceName(), subInterface.getJavascriptMethods());
+        }
     }
 
     public void executeJavascript(String javascript) {
@@ -86,10 +100,13 @@ public class JSWebView extends WebView {
             mResultCallback = resultCallback;
         }
 
+        @SuppressWarnings("unused")
         @JavascriptInterface
         public void passResult(String result) {
-            mResultCallback.onReceiveValue(result);
-            resultLock.unlock();
+            if (mResultCallback != null) {
+                mResultCallback.onReceiveValue(result);
+                resultLock.unlock();
+            }
         }
     }
 
@@ -165,14 +182,40 @@ public class JSWebView extends WebView {
             }
 
             public boolean onConsoleMessage(@NonNull ConsoleMessage consoleMessage) {
-                Log.d("JSWebViewError", "Error: " + consoleMessage.message() + " line: " + consoleMessage.lineNumber());
-                return false;
+                //Log.i(TAG, "onConsoleMessage: " + consoleMessage.message() + "source: " + consoleMessage.sourceId() + " line: " + consoleMessage.lineNumber());
+                return super.onConsoleMessage(consoleMessage);
             }
         });
     }
 
+    private void loadJavascriptSupportBits(String interfaceName, String namespace, List<String> methods) {
+        executeJavascript(interfaceName + "." + namespace + " = { };");
+        for (String method : methods) {
+            executeJavascript(interfaceName + "." + namespace + "." + method + " = function() {" + namespace + "." + method + "();}");
+        }
+    }
+
     private void loadJavascriptSupportBits(String interfaceName) {
         executeJavascript(interfaceName + " = { };");
+    }
+
+    private String getValueToBridgeStringFunction() {
+        StringBuilder buf = new StringBuilder();
+
+        try {
+            InputStream is = mContext.getAssets().open("valuetobridgestring.js");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf-8"));
+            String str;
+
+            while ((str=reader.readLine()) != null) {
+                buf.append(str);
+            }
+            reader.close();
+        } catch (IOException ioe) {
+            Log.e(TAG, "Could not read asset from lib");
+        }
+
+        return buf.toString();
     }
 
     private void loadJavascriptBaseSupport() {
@@ -189,58 +232,7 @@ public class JSWebView extends WebView {
             // this is used in the javascript injection below.
             setFunctionCacheLimit(mFunctionCacheLimit);
 
-            // would be nice to load this from a file contained in the .jar instead?
-            executeJavascript("function valueToBridgeString(obj, embedded, cache) {\n" +
-                                    "    // recursion sanity check\n" +
-                                    "    if (!cache) cache = [];\n" +
-                                    "    if (cache.indexOf(obj) >= 0) {\n" +
-                                    "        throw new Error('Can\\'t do circular references');\n" +
-                                    "    } else {\n" +
-                                    "        cache.push(obj);\n" +
-                                    "    }\n" +
-                                    "\n" +
-                                    "    var rtn;\n" +
-                                    "    switch (typeof obj) {\n" +
-                                    "        case 'object':\n" +
-                                    "            if (!obj) {\n" +
-                                    "                rtn = JSON.stringify(obj);\n" +
-                                    "            } else if (Array.isArray(obj)) {\n" +
-                                    "                rtn = '[' + obj.map(function(item) {\n" +
-                                    "                    return valueToBridgeString(item, true, cache);\n" +
-                                    "                }).join(',') + ']';\n" +
-                                    "            } else {\n" +
-                                    "                var rtn = '{';\n" +
-                                    "                for (var name in obj) {\n" +
-                                    "                    if (obj.hasOwnProperty(name)) {\n" +
-                                    "                        if (rtn.length > 1) {\n" +
-                                    "                            rtn += ',';\n" +
-                                    "                        }\n" +
-                                    "                        rtn += JSON.stringify(name);\n" +
-                                    "                        rtn += ': ';\n" +
-                                    "                        rtn += valueToBridgeString(obj[name], true, cache);\n" +
-                                    "                    }\n" +
-                                    "                }\n" +
-                                    "                rtn += '}';\n" +
-                                    "            }\n" +
-                                    "            break;\n" +
-                                    "        case 'function':\n" +
-                                    "            rtn = '\\\"function:' + __functionIDCounter.toString() + ':' + btoa(obj.toString()) + '\\\"';\n" +
-                                    "            __functionCache[__functionIDCounter] = obj;\n" +
-                                    "            __functionIDCounter++;\n" +
-                                    "            if (__functionIDCounter > __functionIDLimit) { __functionIDCounter = 0; }\n" +
-                                    "            break;\n" +
-                                    "        default:\n" +
-                                    "            if (obj === undefined) {\n" +
-                                    "                rtn = 'null';\n" +
-                                    "            } else {" +
-                                    "                rtn = JSON.stringify(obj);\n" +
-                                    "            }\n" +
-                                    "    }\n" +
-                                    "    if (!embedded) {\n" +
-                                    "        rtn = '{\"__rawValue\": ' + rtn + '}';\n" +
-                                    "    }\n" +
-                                    "    return rtn;\n" +
-                                    "}\n");
+            executeJavascript(getValueToBridgeStringFunction());
         }
     }
 }

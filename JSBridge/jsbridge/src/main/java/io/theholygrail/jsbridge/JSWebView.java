@@ -2,105 +2,110 @@ package io.theholygrail.jsbridge;
 
 import android.content.Context;
 import android.net.Uri;
-import android.os.Handler;
+import android.support.annotation.NonNull;
+import android.text.TextUtils;
 import android.util.AttributeSet;
+import android.util.Log;
+import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
+import android.webkit.JsResult;
 import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.Semaphore;
+import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-/**
- * Created by brandon on 4/28/15.
- */
 public class JSWebView extends WebView {
-    private Context mContext = null;
+    private static final String TAG = JSWebView.class.getSimpleName();
+    private int mFunctionCacheLimit = 200;
+
+    private String mJsInterfacePrefix = "NativeBridge";
 
     public BridgeSupport bridgeSupport = null;
 
     public JSWebView(Context context) {
         super(context);
+        setupDefaults();
     }
 
     public JSWebView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        setupDefaults();
     }
 
     public JSWebView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
-        // the two constructors above end up calling this guy, so just set it up once.
-        mContext = context;
+        setupDefaults();
     }
 
-    @Override
-    public void addJavascriptInterface(Object obj, String interfaceName) {
-        super.addJavascriptInterface(obj, "__"+interfaceName);
+    public void setJsInterfacePrefix(String interfacePrefix) {
+        mJsInterfacePrefix = interfacePrefix;
+    }
 
-        loadJavascriptBaseSupport();
-        loadJavascriptSupportBits(interfaceName);
-        exportObjectMethodsToJS(obj, interfaceName);
+    public void executeJavascript(String javascript) {
+        // Useful for seeing the injected javascript.
+        //Log.d(TAG, "javascript: " + javascript);
+
+        /*
+        The WebView.evaluateJavascript() method would be a much better choice, but it's not
+        available until a later SDK than we support.
+         */
+        loadUrl("javascript:" + Uri.encode(javascript));
+    }
+
+    public void setFunctionCacheLimit(int count) {
+        mFunctionCacheLimit = count;
+        executeJavascript("__functionIDLimit = " + mFunctionCacheLimit + ";");
     }
 
     // Private stuff -------------------------------------------------------------------------------
 
-    /*
-    This is strictly to retrieve the result value.  The WebView.evaluateJavascript() method would be
-    a much better choice, but it's not available until a later SDK than we support.
-     */
     public class BridgeSupport {
-        private Context mContext = null;
         private ValueCallback<String> mResultCallback = null;
         private final Lock resultLock = new ReentrantLock();
-
-        BridgeSupport(Context context) {
-            mContext = context;
-        }
 
         protected void expectResult(ValueCallback<String> resultCallback) {
             resultLock.lock();
             mResultCallback = resultCallback;
         }
 
+        @SuppressWarnings("unused")
         @JavascriptInterface
         public void passResult(String result) {
-            mResultCallback.onReceiveValue(result);
-            resultLock.unlock();
+            if (mResultCallback != null) {
+                mResultCallback.onReceiveValue(result);
+                resultLock.unlock();
+            }
         }
     }
 
-    private void exportObjectMethodsToJS(Object obj, String interfaceName) {
+    private void exportNamespaceToJS(Object obj, String namespace, String interfaceName) {
+        //TODO: clean up
         Method methods[] = obj.getClass().getMethods();
+        String ns = TextUtils.isEmpty(namespace) ? "" : namespace + ".";
+        String dot = TextUtils.isEmpty(namespace) ? "" : ".";
 
-        for (int i = 0; i < methods.length; i++) {
-            Method method = methods[i];
+        executeJavascript(mJsInterfacePrefix + dot + namespace + " = { };");
 
-            if (hasOnlyStringParameters(method)) {
-                // export it.
+        for (Method method : methods) {
+            if (method.isAnnotationPresent(JavascriptInterface.class)) {
                 String methodName = method.getName();
                 String parameterString = generateParameterString(method);
                 String callString = generateCallString(method);
 
-                String jsString = interfaceName+"."+methodName+" = function("+parameterString+") { __"+interfaceName+"."+methodName+"("+callString+"); }";
-                super.loadUrl("javascript:"+jsString);
+                String jsString = mJsInterfacePrefix + "." + ns + methodName + " = function(" + parameterString + ") { " +
+                        interfaceName + "." + methodName + "("+callString+"); }";
+                executeJavascript(jsString);
             }
         }
-    }
-
-    private Boolean hasOnlyStringParameters(Method method) {
-        Boolean result = true;
-        Class paramClasses[] = method.getParameterTypes();
-        for (int i = 0; i < paramClasses.length; i++) {
-            String typeName = paramClasses[i].getSimpleName();
-            if (!typeName.equals("String")) {
-                result = false;
-                break;
-            }
-        }
-        return result;
     }
 
     private String generateParameterString(Method method) {
@@ -129,68 +134,95 @@ public class JSWebView extends WebView {
         return result;
     }
 
-    private void loadJavascriptSupportBits(String interfaceName) {
-        super.loadUrl("javascript: " + interfaceName + " = { };");
+    private void setupDefaults() {
+        getSettings().setJavaScriptEnabled(true);
+        getSettings().setLoadsImagesAutomatically(true);
+        // TODO: Caching policy?
+        //getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
+        getSettings().setDomStorageEnabled(true);
+        setWebViewClient(new WebViewClient() {
+            public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                Log.d("JSWebViewError", "Code: " + errorCode + "Error: " + description + " Url: " + failingUrl);
+            }
+        });
+
+        setWebChromeClient(new WebChromeClient() {
+            @Override
+            public boolean onJsAlert(WebView view, String url, String message, JsResult result) {
+                return super.onJsAlert(view, url, message, result);
+            }
+
+            public boolean onConsoleMessage(@NonNull ConsoleMessage consoleMessage) {
+                //return super.onConsoleMessage(consoleMessage);
+                Log.i(TAG, "console: " + consoleMessage.message() + " source: " + consoleMessage.sourceId() + ":" + consoleMessage.lineNumber());
+                return false;
+            }
+        });
+
+        bridgeSupport = new BridgeSupport();
+    }
+
+    private String getValueToBridgeStringFunction() {
+        StringBuilder buf = new StringBuilder();
+
+        try {
+            InputStream is = getContext().getAssets().open("valuetobridgestring.js");
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is, "utf-8"));
+            String str;
+
+            while ((str=reader.readLine()) != null) {
+                buf.append(str);
+            }
+            reader.close();
+        } catch (IOException ioe) {
+            Log.e(TAG, "Could not read asset from lib");
+        }
+
+        return buf.toString();
     }
 
     private void loadJavascriptBaseSupport() {
-        if (bridgeSupport == null) {
-            bridgeSupport = new BridgeSupport(mContext);
+        // TODO: Fix this on new loads...
+        executeJavascript("__functionIDCounter = 0, __functionCache = { };");
 
-            addJavascriptInterface(bridgeSupport, "__bridgeSupport");
+        // set the limit of our function cache to the default.
+        // this is used in the javascript injection below.
+        setFunctionCacheLimit(mFunctionCacheLimit);
 
-            // would be nice to load this from a file contained in the .jar instead?
-            super.loadUrl("javascript: " +
-                            Uri.encode("function valueToBridgeString(obj, embedded, cache) {\n" +
-                                    "    // recursion sanity check\n" +
-                                    "    if (!cache) cache = [];\n" +
-                                    "    if (cache.indexOf(obj) >= 0) {\n" +
-                                    "        throw new Error('Can\\'t do circular references');\n" +
-                                    "    } else {\n" +
-                                    "        cache.push(obj);\n" +
-                                    "    }\n" +
-                                    "\n" +
-                                    "    var rtn;\n" +
-                                    "    switch (typeof obj) {\n" +
-                                    "        case 'object':\n" +
-                                    "            if (!obj) {\n" +
-                                    "                rtn = JSON.stringify(obj);\n" +
-                                    "            } else if (Array.isArray(obj)) {\n" +
-                                    "                rtn = '[' + obj.map(function(item) {\n" +
-                                    "                    return valueToBridgeString(item, true, cache);\n" +
-                                    "                }).join(',') + ']';\n" +
-                                    "            } else {\n" +
-                                    "                var rtn = '{';\n" +
-                                    "                for (var name in obj) {\n" +
-                                    "                    if (obj.hasOwnProperty(name)) {\n" +
-                                    "                        if (rtn.length > 1) {\n" +
-                                    "                            rtn += ',';\n" +
-                                    "                        }\n" +
-                                    "                        rtn += JSON.stringify(name);\n" +
-                                    "                        rtn += ': ';\n" +
-                                    "                        rtn += valueToBridgeString(obj[name], true, cache);\n" +
-                                    "                    }\n" +
-                                    "                }\n" +
-                                    "                rtn += '}';\n" +
-                                    "            }\n" +
-                                    "            break;\n" +
-                                    "        case 'function':\n" +
-                                    "            rtn = '\\\"function::' + btoa(obj.toString()) + '\\\"';\n" +
-                                    "            break;\n" +
-                                    "        default:\n" +
-                                    "            if (obj === undefined) {\n" +
-                                    "                rtn = 'null';\n" +
-                                    "            } else {" +
-                                    "                rtn = JSON.stringify(obj);\n" +
-                                    "            }\n" +
-                                    "    }\n" +
-                                    "    if (!embedded) {\n" +
-                                    "        rtn = '{\"__rawValue\": ' + rtn + '}';\n" +
-                                    "    }\n" +
-                                    "    return rtn;\n" +
-                                    "}\n")
-            );
+        executeJavascript(getValueToBridgeStringFunction());
+    }
+
+    private void setupJsInterfaces(JSInterface jsInterface) {
+        addJavascriptInterface(jsInterface.getJsObject(), jsInterface.getInterfaceName());
+
+        List<JSInterface> subInterfaces = jsInterface.getSubInterfaces();
+        if (subInterfaces != null) {
+            for (JSInterface subInterface: subInterfaces) {
+                setupJsInterface(subInterface);
+            }
         }
     }
-}
 
+    public void setupJsInterface(JSInterface jsInterface) {
+        addJavascriptInterface(bridgeSupport, "__bridgeSupport");
+        setupJsInterfaces(jsInterface);
+    }
+
+    private void setupSubNamespace(JSInterface jsInterface, String nameSpace) {
+            List<JSInterface> subInterfaces = jsInterface.getSubInterfaces();
+
+            String dot = TextUtils.isEmpty(nameSpace) ? "": ".";
+
+            for (JSInterface subInterface:subInterfaces) {
+                exportNamespaceToJS(subInterface.getJsObject(), nameSpace + dot + subInterface.getInterfaceName(), subInterface.getInterfaceName());
+                setupSubNamespace(subInterface, nameSpace + subInterface.getInterfaceName());
+            }
+    }
+
+    public void setupNamespace(JSInterface mainInterface) {
+        loadJavascriptBaseSupport();
+
+        exportNamespaceToJS(mainInterface.getJsObject(), "", mainInterface.getInterfaceName());
+        setupSubNamespace(mainInterface, "");
+    }
+}

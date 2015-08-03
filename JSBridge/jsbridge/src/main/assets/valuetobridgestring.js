@@ -1,4 +1,4 @@
-function valueToBridgeString(obj, embedded, cache) {
+function valueToBridgeString(obj, cache) {
     if (!cache) cache = [];
     if (cache.indexOf(obj) >= 0) {
         throw new Error('Cant do circular references');
@@ -13,7 +13,7 @@ function valueToBridgeString(obj, embedded, cache) {
                 rtn = JSON.stringify(obj);
             } else if (Array.isArray(obj)) {
                 rtn = '[' + obj.map(function(item) {
-                    return valueToBridgeString(item, true, cache);
+                    return valueToBridgeString(item, cache);
                 }).join(',') + ']';
             } else {
                 var rtn = '{';
@@ -24,14 +24,14 @@ function valueToBridgeString(obj, embedded, cache) {
                         }
                         rtn += JSON.stringify(name);
                         rtn += ': ';
-                        rtn += valueToBridgeString(obj[name], true, cache);
+                        rtn += valueToBridgeString(obj[name], cache);
                     }
                 }
                 rtn += '}';
             }
         break;
         case 'function':
-            rtn = '"function:' + __functionIDCounter.toString() + ':' + btoa(obj.toString()) + '"';
+            rtn = 'function:' + __functionIDCounter.toString() + ':' + btoa(obj.toString());
             __functionCache[__functionIDCounter] = obj;
             __functionIDCounter++;
             if (__functionIDCounter > __functionIDLimit) { __functionIDCounter = 0; }
@@ -43,8 +43,6 @@ function valueToBridgeString(obj, embedded, cache) {
                 rtn = JSON.stringify(obj);
             }
     }
-    if (!embedded) {
-        rtn = '{"__rawValue": ' + rtn + '}';
-    }
+
     return rtn;
 }

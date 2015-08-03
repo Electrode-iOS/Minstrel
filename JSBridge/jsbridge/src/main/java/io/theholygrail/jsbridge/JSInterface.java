@@ -44,7 +44,7 @@ public class JSInterface {
             if (method.isAnnotationPresent(JavascriptInterface.class)) {
                 methodNames.add(method.getName());
 
-                Log.v(TAG, "Added method: " + method.getName());
+                Log.d(TAG, "Added method: " + method.getName());
             }
         }
 

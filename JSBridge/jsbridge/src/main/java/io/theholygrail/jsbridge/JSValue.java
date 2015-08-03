@@ -1,9 +1,9 @@
 package io.theholygrail.jsbridge;
 
-import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
+import android.util.Log;
 import android.webkit.ValueCallback;
 
 import org.json.JSONArray;
@@ -16,12 +16,14 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * Created by brandon on 4/28/15.
  */
 
 public class JSValue {
+    private static final String TAG = JSValue.class.getSimpleName();
     protected Object mValue = null;
     private final Handler mHandler = new Handler(Looper.getMainLooper());
 
@@ -29,15 +31,11 @@ public class JSValue {
         if (value instanceof String) {
             // lets try to convert it to a json object..
             try {
-                String stringValue = (String)value;
-                JSONObject jsonObject = new JSONObject(stringValue);
-                // hmm.. we didn't throw an exception.. get our value and decompose it.
-                Object rawValue = jsonObject.get("__rawValue");
-                // decompose turns it into a JSValue.. this is only relevant at
-                // the top level to just bring that value over.
-                mValue = JSValue.decompose(rawValue).mValue;
+                JSONObject jsonObject = new JSONObject((String)value);
+                mValue = JSValue.decompose(jsonObject).mValue;
             } catch (JSONException e) {
-                e.printStackTrace();
+                mValue = JSValue.decompose(value).mValue;
+                Log.d(TAG, "could not convert to jsonobject, decomposing value.");
             }
         } else {
             mValue = JSValue.decompose(value);
@@ -117,6 +115,9 @@ public class JSValue {
             } else if (mValue instanceof Integer || mValue instanceof Double) {
                 Number numberValue = (Number)mValue;
                 result = numberValue.toString();
+            } else {
+                // TODO: Handle boolean specifically. return value for unhandled values.
+                result = String.valueOf(mValue);
             }
         }
 
@@ -138,7 +139,7 @@ public class JSValue {
             }
         }
 
-        return (Integer)result;
+        return result;
     }
 
     public Double doubleValue() {
@@ -195,61 +196,119 @@ public class JSValue {
         return result;
     }
 
-    public String javascriptStringValue() {
+    public String functionSourceValue() {
         String result = null;
 
         if (isFunction()) {
-            // rip the "function:" part off
-            String base64String = ((String)mValue).replace("function:", "");
-            // decode it back to it's javascript origins.
-            byte[] data = Base64.decode(base64String, Base64.DEFAULT);
+            String[] parts = splitFunctionValues();
 
-            try {
-                result = new String(data, "UTF-8");
-            } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
+            if (parts.length == 3) {
+                // source code is base64 encoded in parts[2].
+                String base64String = parts[2];
+                // decode it back to it's javascript origins.
+                byte[] data = Base64.decode(base64String, Base64.DEFAULT);
+
+                try {
+                    result = new String(data, "UTF-8");
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
             }
         }
-        // TODO: Support other types later
-        /*
+
+        return result;
+    }
+
+    public String functionIDValue() {
+        String result = null;
+
+        if (isFunction()) {
+            String[] parts = splitFunctionValues();
+
+            if (parts.length == 3) {
+                // function ID is in parts[1].
+                result = parts[1];
+            }
+        }
+
+        return result;
+    }
+
+    public String javascriptStringValue() {
+        String result;
+
+        if (isFunction()) {
+            Log.d(TAG, "functionid value: " + functionIDValue());
+            result = "__functionCache[" + functionIDValue() + "]";
+        }
         else if (isObject()) {
             result = "{";
 
             Map map = mapValue();
             Set keys = map.keySet();
 
-            for (String s: keys) {
-                result += s + ": " + ....
+            for (Object s: keys) {
+                if (result.length() != 1) {
+                    result+= ",";
+                }
+                Object obj = map.get(s);
+                String value;
+                if (obj instanceof JSValue) {
+                    value = ((JSValue) obj).javascriptStringValue();
+                } else {
+                    value = obj.toString();
+                }
+                result += s + ": " + value;
             }
 
-            ...
+            result += " }";
         } else if (isArray()) {
+            result = "[";
 
-        }*/
+            List list = listValue();
+            int index = 0;
+
+            for (Object obj : list) {
+                String value;
+                if (obj instanceof JSValue) {
+                    value = ((JSValue)obj).javascriptStringValue();
+                } else {
+                    value = obj.toString();
+                }
+                if (index == 0) {
+                    result += value;
+                } else {
+                    result += ", " + value;
+                }
+                index++;
+            }
+
+            result += "]";
+        } else if (isString()) {
+            result = "'" + stringValue().replace("'", "\'") + "'";
+        } else {
+            result = stringValue();
+        }
 
         return result;
     }
 
     public void callFunction(final JSWebView webView, Object args[], final ValueCallback<JSValue> resultCallback) {
-        JSValue result = null;
+        if (!isFunction()) {
+            return;
+        }
 
-        String argsString = "";
-        for (int i = 0; i < args.length; i++) {
-            Object arg = args[i];
-            if (i > 0) {
-                argsString += ", ";
-            }
+        // Convert arguments into JSValues we can stringify
+        JSValue jsArg;
+        StringBuilder argumentBuilder = new StringBuilder();
+        if (args != null) {
+            for (int i = 0; i < args.length; i++) {
+                jsArg = decompose(args[i]);
+                argumentBuilder.append(jsArg.javascriptStringValue());
 
-            if (arg instanceof String) {
-                argsString += "'" + ((String)arg).replace("'", "\'") + "'";
-            } else if (arg instanceof Integer) {
-                argsString += ((Integer)arg).toString();
-            } else if (arg instanceof Double) {
-                argsString += ((Double)arg).toString();
-            } else if (arg instanceof Boolean) {
-                argsString += ((Boolean)arg).toString();
-            } else {
-                // TODO: Support other argument types later, like objects, arrays, etc.
+                if (i != args.length -1) {
+                    argumentBuilder.append(',');
+                }
             }
         }
 
@@ -263,21 +322,24 @@ public class JSValue {
             });
         }
 
-        final String arguments = argsString;
+
+        final String arguments = argumentBuilder.toString();
         mHandler.post(new Runnable() {
             @Override
             public void run() {
-                /*
-                This is strictly to retrieve the result value.  The WebView.evaluateJavascript() method would be
-                a much better choice, but it's not available until a later SDK than we support.
-                */
+                // This is strictly to retrieve the result value.
 
-                // setup our call
-                webView.loadUrl("javascript:var __lastCallback = " + Uri.encode(javascriptStringValue()));
-                // make said call...
-                webView.loadUrl("javascript:var __lastResult = __lastCallback(" + arguments + ");");
-                // get result...
-                webView.loadUrl("javascript:__bridgeSupport.passResult(__lastResult);");
+                String jsFunction = javascriptStringValue();
+
+                Log.d(TAG, "callFunction 4: " + jsFunction);
+                // 1. setup our call
+                // 2. make sure __lastResult is cleared so we don't get a previous value.
+                // 3. make said call...
+                // 4. get result and pass it back to native.
+                webView.executeJavascript("var __lastCallback = " + jsFunction + ";\n" +
+                        "var __lastResult = null;\n" +
+                        "var __lastResult = __lastCallback(" + arguments + ");\n" +
+                        "__bridgeSupport.passResult(__lastResult);");
             }
         });
     }
@@ -290,12 +352,12 @@ public class JSValue {
     }
 
     protected static JSValue decompose(Object object) {
-        JSValue result = null;
+        JSValue result;
 
         if (object instanceof JSONArray) {
             // turn it into a normal array of JSValue's.
             JSONArray jsonArray = (JSONArray)object;
-            List<Object> array = new ArrayList<Object>();
+            List<Object> array = new ArrayList<>();
 
             // old skool iteration, we want to preserve the order.
             for (int i = 0; i < jsonArray.length(); i++) {
@@ -312,7 +374,7 @@ public class JSValue {
 
         } else if (object instanceof JSONObject) {
             JSONObject jsonObject = (JSONObject)object;
-            Map<String, Object> map = new HashMap<String, Object>();
+            Map<String, Object> map = new HashMap<>();
 
             Iterator<String> keys = jsonObject.keys();
             while (keys.hasNext()) {
@@ -332,11 +394,21 @@ public class JSValue {
             result = (JSValue)object;
         } else {
             JSValue jsValue = new JSValue();
-            if (object.equals(JSONObject.NULL))
-                jsValue.mValue = null;
-            else
-                jsValue.mValue = object;
+            jsValue.mValue = object; // can be null
+
             result = jsValue;
+        }
+
+        return result;
+    }
+
+    private String[] splitFunctionValues() {
+        String result[] = null;
+
+        if (isFunction()) {
+            // "function:<id>:<base64 data>"
+            String value = (String) mValue;
+            result = value.split(":");
         }
 
         return result;

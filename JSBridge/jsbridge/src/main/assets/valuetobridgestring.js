@@ -35,6 +35,7 @@ function valueToBridgeString(obj, cache) {
             __functionCache[__functionIDCounter] = obj;
             __functionIDCounter++;
             if (__functionIDCounter > __functionIDLimit) { __functionIDCounter = 0; }
+            rtn = JSON.stringify(rtn);
         break;
         default:
             if (obj === undefined) {

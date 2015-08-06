@@ -88,7 +88,6 @@ public class JSWebView extends WebView {
     }
 
     private void exportNamespaceToJS(Object obj, String namespace, String interfaceName) {
-        //TODO: clean up
         Method methods[] = obj.getClass().getMethods();
         String ns = TextUtils.isEmpty(namespace) ? "" : namespace + ".";
         String dot = TextUtils.isEmpty(namespace) ? "" : ".";
@@ -182,7 +181,6 @@ public class JSWebView extends WebView {
     }
 
     private void loadJavascriptBaseSupport() {
-        // TODO: Fix this on new loads...
         executeJavascript("__functionIDCounter = 0, __functionCache = { };");
 
         // set the limit of our function cache to the default.

@@ -3,7 +3,6 @@ package io.theholygrail.jsbridge;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Base64;
-import android.util.Log;
 import android.webkit.ValueCallback;
 
 import org.json.JSONArray;
@@ -18,10 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Created by brandon on 4/28/15.
- */
-
+@SuppressWarnings("unused")
 public class JSValue {
     private static final String TAG = JSValue.class.getSimpleName();
     protected Object mValue = null;
@@ -34,8 +30,8 @@ public class JSValue {
                 JSONObject jsonObject = new JSONObject((String)value);
                 mValue = JSValue.decompose(jsonObject).mValue;
             } catch (JSONException e) {
+                // not a json object, decompose the value itself
                 mValue = JSValue.decompose(value).mValue;
-                Log.d(TAG, "could not convert to jsonobject, decomposing value.");
             }
         } else {
             mValue = JSValue.decompose(value);
@@ -55,7 +51,7 @@ public class JSValue {
 
         if (mValue instanceof String) {
             String stringValue = (String)mValue;
-            if (stringValue.indexOf("function:") == 0) {
+            if (JsValueUtil.parseQuotes(stringValue).startsWith("function:")) {
                 result = true;
             }
         }
@@ -116,7 +112,7 @@ public class JSValue {
                 Number numberValue = (Number)mValue;
                 result = numberValue.toString();
             } else {
-                // TODO: Handle boolean specifically. return value for unhandled values.
+                // TODO: handle booleans and unhandled values explicitly
                 result = String.valueOf(mValue);
             }
         }
@@ -238,10 +234,8 @@ public class JSValue {
         String result;
 
         if (isFunction()) {
-            Log.d(TAG, "functionid value: " + functionIDValue());
             result = "__functionCache[" + functionIDValue() + "]";
-        }
-        else if (isObject()) {
+        } else if (isObject()) {
             result = "{";
 
             Map map = mapValue();
@@ -328,10 +322,7 @@ public class JSValue {
             @Override
             public void run() {
                 // This is strictly to retrieve the result value.
-
                 String jsFunction = javascriptStringValue();
-
-                Log.d(TAG, "callFunction 4: " + jsFunction);
                 // 1. setup our call
                 // 2. make sure __lastResult is cleared so we don't get a previous value.
                 // 3. make said call...
@@ -343,7 +334,6 @@ public class JSValue {
             }
         });
     }
-
 
     // Protected stuff -----------------------------------------------------------------------------
 
@@ -371,7 +361,6 @@ public class JSValue {
             JSValue jsValue = new JSValue();
             jsValue.mValue = array;
             result = jsValue;
-
         } else if (object instanceof JSONObject) {
             JSONObject jsonObject = (JSONObject)object;
             Map<String, Object> map = new HashMap<>();
@@ -389,7 +378,6 @@ public class JSValue {
             JSValue jsValue = new JSValue();
             jsValue.mValue = map;
             result = jsValue;
-
         } else if (object instanceof JSValue) {
             result = (JSValue)object;
         } else {

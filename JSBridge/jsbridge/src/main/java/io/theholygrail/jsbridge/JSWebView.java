@@ -95,7 +95,7 @@ public class JSWebView extends WebView {
         executeJavascript(mJsInterfacePrefix + dot + namespace + " = { };");
 
         for (Method method : methods) {
-            if (method.isAnnotationPresent(JavascriptInterface.class)) {
+            if (Utils.canExportToJavascript(method)) {
                 String methodName = method.getName();
                 String parameterString = generateParameterString(method);
                 String callString = generateCallString(method);

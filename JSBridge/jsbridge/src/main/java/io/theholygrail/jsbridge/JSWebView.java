@@ -1,7 +1,7 @@
 package io.theholygrail.jsbridge;
 
 import android.content.Context;
-import android.net.Uri;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.util.AttributeSet;
@@ -54,11 +54,16 @@ public class JSWebView extends WebView {
         // Useful for seeing the injected javascript.
         //Log.d(TAG, "javascript: " + javascript);
 
-        /*
-        The WebView.evaluateJavascript() method would be a much better choice, but it's not
-        available until a later SDK than we support.
-         */
-        loadUrl("javascript:" + Uri.encode(javascript));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            evaluateJavascript(javascript, new ValueCallback<String>() {
+                @Override
+                public void onReceiveValue(String value) {
+                    Log.d(TAG, "evaluateJavascript.onReceiveValue(): " + value);
+                }
+            });
+        } else {
+            loadUrl("javascript:" + javascript);
+        }
     }
 
     public void setFunctionCacheLimit(int count) {

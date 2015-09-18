@@ -5,7 +5,7 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 public abstract class JSLog {
-    public static final String DEFAULT_TAG = "jsbridge"; // Default tag used if not provided
+    private static final String DEFAULT_TAG = "jsbridge"; // Default tag used if not provided
 
     public interface LogInterface {
         void verbose(@NonNull String tag, @NonNull String message, @Nullable Throwable t);

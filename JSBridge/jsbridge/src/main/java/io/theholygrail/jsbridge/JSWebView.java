@@ -61,7 +61,11 @@ public class JSWebView extends WebView {
                 }
             });
         } else {
-            loadUrl("javascript:" + javascript);
+            try {
+                loadUrl("javascript:" + javascript);
+            } catch (NullPointerException e) {
+                JSLog.w(TAG, "Could not run javascript: " + javascript);
+            }
         }
     }
 

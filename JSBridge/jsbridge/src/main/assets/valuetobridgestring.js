@@ -1,10 +1,4 @@
-function valueToBridgeString(obj, cache) {
-    if (!cache) cache = [];
-    if (cache.indexOf(obj) >= 0) {
-        throw new Error('Cant do circular references');
-    } else {
-        cache.push(obj);
-    }
+function valueToBridgeString(obj) {
 
     var rtn;
     switch (typeof obj) {
@@ -13,7 +7,7 @@ function valueToBridgeString(obj, cache) {
                 rtn = JSON.stringify(obj);
             } else if (Array.isArray(obj)) {
                 rtn = '[' + obj.map(function(item) {
-                    return valueToBridgeString(item, cache);
+                    return valueToBridgeString(item);
                 }).join(',') + ']';
             } else {
                 var rtn = '{';
@@ -24,7 +18,7 @@ function valueToBridgeString(obj, cache) {
                         }
                         rtn += JSON.stringify(name);
                         rtn += ': ';
-                        rtn += valueToBridgeString(obj[name], cache);
+                        rtn += valueToBridgeString(obj[name]);
                     }
                 }
                 rtn += '}';

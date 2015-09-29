@@ -1,7 +1,5 @@
 package io.theholygrail.jsbridge;
 
-import android.util.Log;
-
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,7 +42,7 @@ public class JSInterface {
             if (Utils.canExportToJavascript(method)) {
                 methodNames.add(method.getName());
 
-                Log.d(TAG, "Added method: " + method.getName());
+                JSLog.d(TAG, "Added method: " + method.getName());
             }
         }
 

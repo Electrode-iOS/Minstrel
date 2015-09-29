@@ -5,7 +5,6 @@ import android.os.Build;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.webkit.JsResult;
@@ -58,11 +57,15 @@ public class JSWebView extends WebView {
             evaluateJavascript(javascript, new ValueCallback<String>() {
                 @Override
                 public void onReceiveValue(String value) {
-                    Log.d(TAG, "evaluateJavascript.onReceiveValue(): " + value);
+                    JSLog.d(TAG, "evaluateJavascript.onReceiveValue(): " + value);
                 }
             });
         } else {
-            loadUrl("javascript:" + javascript);
+            try {
+                loadUrl("javascript:" + javascript);
+            } catch (NullPointerException e) {
+                JSLog.w(TAG, "Could not run javascript: " + javascript);
+            }
         }
     }
 
@@ -146,7 +149,7 @@ public class JSWebView extends WebView {
         getSettings().setDomStorageEnabled(true);
         setWebViewClient(new WebViewClient() {
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                Log.d("JSWebViewError", "Code: " + errorCode + "Error: " + description + " Url: " + failingUrl);
+                JSLog.d("JSWebViewError", "Code: " + errorCode + "Error: " + description + " Url: " + failingUrl);
             }
         });
 
@@ -158,7 +161,7 @@ public class JSWebView extends WebView {
 
             public boolean onConsoleMessage(@NonNull ConsoleMessage consoleMessage) {
                 //return super.onConsoleMessage(consoleMessage);
-                Log.i(TAG, "console: " + consoleMessage.message() + " source: " + consoleMessage.sourceId() + ":" + consoleMessage.lineNumber());
+                JSLog.i(TAG, "console: " + consoleMessage.message() + " source: " + consoleMessage.sourceId() + ":" + consoleMessage.lineNumber());
                 return false;
             }
         });
@@ -179,7 +182,7 @@ public class JSWebView extends WebView {
             }
             reader.close();
         } catch (IOException ioe) {
-            Log.e(TAG, "Could not read asset from lib");
+            JSLog.e(TAG, "Could not read asset from lib");
         }
 
         return buf.toString();
